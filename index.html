@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html>
+	<head>
+
+	</head>
+	<body>
+		<div class="header">
+			<h1>RGB2GRAY + GaussianBlur wasm test!</h1>
+			<input type="file" id="chooseFile" accept="image/*">
+		</div>
+		<div class="main_contents">
+			<div id="src">
+				<canvas id="src"></canvas>
+			</div>
+			<div class="vl"></div>
+			<div id="dst">
+				<canvas id="dst"></canvas>
+			</div>
+		</div>
+
+	</body>
+	<style>
+		div.header{
+			height: 5%;
+			width: 100%;
+			background-color: bisque;
+			display: grid;
+		}
+		div.main_contents{
+			display: inline-flex;
+			width: 100%;
+			height: auto;
+			justify-content: center;
+		}
+		div.vl{
+			border-left: 3px solid rgb(94, 94, 94);
+			height: auto;
+		}
+		div.main_contents div#src{
+			margin-right: 30px;
+			max-width: 800px;
+			height: auto;
+			
+		}
+		div.main_contents div#dst{
+			margin-left: 30px;
+			max-width: 800px;
+			height: auto;
+		}
+
+		div.main_contents h1 {
+			margin: 0;
+			padding: 100px;
+		}
+		input#chooseFile{
+			margin-bottom: 30px;
+			margin-left: 30px;
+		}
+		div.header h1 {
+			font-weight: bold;
+			margin: 30px;
+
+		}
+		canvas#src{
+			max-width: 800px;
+			height: auto;
+		}
+		canvas#dst{
+			max-width: 800px;
+			height: auto;
+		}
+
+	</style>
+	<script src="main.js"></script>
+	<script>
+		const api = {
+		  	create_buffer: Module.cwrap('create_buffer', 'number', ['number', 'number']),
+		  	destroy_buffer: Module.cwrap('destroy_buffer', '', ['number']),
+			rgb2gray: Module.cwrap('rgb2gray', '', ['number', 'number', 'number']),
+			xdog: Module.cwrap('xdog', '', ['number', 'number', 'number', 'number', 'number',
+											'number', 'number', 'number', 'number'])
+		};
+
+		const srcCanvas = document.querySelector("canvas#src");
+		const dstCanvas = document.querySelector("canvas#dst");
+		const srcCtx = srcCanvas.getContext("2d");
+		const dstCtx = dstCanvas.getContext("2d");
+		var srcData;
+
+		document.querySelector('input#chooseFile').addEventListener("change", function(e){
+			var file = e.target.files[0];
+			var image = new Image();
+			image.src = URL.createObjectURL(file);
+			image.onload = function(){
+				srcCanvas.width = image.width;
+				srcCanvas.height = image.height;
+				dstCanvas.width = image.width;
+				dstCanvas.height = image.height;
+
+				srcCtx.drawImage(image, 0, 0, image.width, image.height);
+				srcData = srcCtx.getImageData(0, 0, image.width, image.height);
+
+				const srcPtr = api.create_buffer(image.width, image.height);
+				Module.HEAPU8.set(srcData.data, srcPtr);
+				var nStart = new Date().getTime();  
+				api.xdog(srcPtr, image.width, image.height, 5, 0.8, 0.98, 200, 0.1, 1.6);
+				var nEnd =  new Date().getTime();
+				var nDiff = nEnd - nStart;  
+				console.log(nDiff);
+
+
+
+				result = new Uint8ClampedArray(Module.HEAPU8.buffer, srcPtr, image.width * image.height * 4);
+				var dstImage = new ImageData(result, image.width, image.height);
+				dstCtx.putImageData(dstImage, 0, 0);
+				
+				// mem free
+				api.destroy_buffer(srcPtr);
+			}
+		})
+		// const srcPtr = api.create_buffer(4);
+		// const dstPtr = api.create_buffer(4);
+		// Module.HEAPU8.set([1,2,3,4], srcPtr);
+		// Module.HEAPU8.set([0,0,0,0], dstPtr);
+
+		// api.change_value(srcPtr, dstPtr, 4);
+		// api.destroy_buffer(srcPtr);
+		// api.destroy_buffer(dstPtr);
+			
+		
+
+
+	</script>
+</html>
